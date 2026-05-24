@@ -50,6 +50,7 @@ export default {
     console.log('method', request.method);
     console.log('url', request.url);
     console.log('headers', JSON.stringify(request.headers));
+    console.log('Origin', JSON.stringify(request.headers.get('Origin')));
 
     if (request.method === "OPTIONS") {
       return handleCors();
