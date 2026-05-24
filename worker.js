@@ -51,6 +51,7 @@ export default {
     }
 
     const origin = request.headers.get('Origin');
+    console.log("Received request from origin:", origin);
     const site = ALL_SITES.find(s => origin.endsWith(s.domain));
     console.log("Received submission from origin:", origin, "matched site:", site?.domain);
 
