@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 const ZEDPA_SITE = {
+  domain: "zedpa.dev",
   ownerEmail: "hello@zedpa.dev",
   ownerName: "Zedpa.dev",
   fromEmail: "hello@zedpa.dev",
@@ -20,22 +21,17 @@ const ZEDPA_SITE = {
   subject: "New enquiry from zedpa.dev",
 };
 
-const DUDA_SITES = {
-  "apcv.zedpa.dev": {
-    ownerEmail: "owner@apcv.com.au",
-    ownerName: "APCV Owner",
-    fromEmail: "hello@zedpa.dev",
-    fromName: "APCV",
-    subject: "New enquiry from apcv.com.au",
-  },
-  "site3.com": {
-    ownerEmail: "owner@site3.com",
-    ownerName: "Site Three Owner",
-    fromEmail: "hello@zedpa.dev",
-    fromName: "Site Three",
-    subject: "New enquiry from site3.com",
-  },
-};
+const APCV_SITE = {
+  domain: "apcv.zedpa.dev",
+  ownerEmail: "owner@apcv.com.au",
+  ownerName: "APCV Owner",
+  fromEmail: "hello@zedpa.dev",
+  fromName: "APCV",
+  subject: "New enquiry from apcv.com.au",
+}
+
+
+const ALL_SITES = [ZEDPA_SITE, APCV_SITE];
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -43,25 +39,26 @@ const DUDA_SITES = {
 export default {
   async fetch(request, env) {
 
-    // this won't work .. we need it to have a site param or headers
-    const url = new URL(request.url);
-    const host = url.hostname.replace(/^www\./, "");
-    console.log(JSON.stringify(request));
-    console.log('method', request.method);
-    console.log('url', request.url);
-    console.log('headers', JSON.stringify(request.headers));
-    console.log('Origin', JSON.stringify(request.headers.get('Origin')));
-
     if (request.method === "OPTIONS") {
       return handleCors();
     }
 
-    if (url.pathname === "/submit") {
-      const site = DUDA_SITES[host] ?? (host === "zedpa.dev" ? ZEDPA_SITE : null);
-      return handleSubmit(request, env, site);
+    const url = new URL(request.url);
+
+    if (url.pathname !== "/submit") {
+      // only interested in /submit path
+      return new Response("Not found", { status: 404 });
     }
 
-    return new Response("Not found", { status: 404 });
+
+    const origin = request.headers.get('Origin');
+    const site = ALL_SITES.find(s => origin.endsWith(s.domain));
+
+    if (!site) {
+      return jsonError("Unknown site", 400);
+    }
+
+    return handleSubmit(request, env, site);
   },
 };
 
