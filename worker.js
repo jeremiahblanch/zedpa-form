@@ -45,6 +45,8 @@ export default {
     const url = new URL(request.url);
     const host = url.hostname.replace(/^www\./, "");
     console.log(JSON.stringify(request));
+    console.log('method', request.method);
+    console.log('url', request.url);
 
     if (request.method === "OPTIONS") {
       return handleCors();
