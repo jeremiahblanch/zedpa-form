@@ -42,11 +42,14 @@ const DUDA_SITES = {
 // ---------------------------------------------------------------------------
 export default {
   async fetch(request, env) {
+
+    // this won't work .. we need it to have a site param or headers
     const url = new URL(request.url);
     const host = url.hostname.replace(/^www\./, "");
     console.log(JSON.stringify(request));
     console.log('method', request.method);
     console.log('url', request.url);
+    console.log('headers', JSON.stringify(request.headers));
 
     if (request.method === "OPTIONS") {
       return handleCors();
