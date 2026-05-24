@@ -23,13 +23,12 @@ const ZEDPA_SITE = {
 
 const APCV_SITE = {
   domain: "apcv.zedpa.dev",
-  ownerEmail: "owner@apcv.com.au",
+  ownerEmail: "hello@zedpa.dev", // TODO should be to apcv
   ownerName: "APCV Owner",
-  fromEmail: "hello@zedpa.dev",
+  fromEmail: "hello@zedpa.dev", // TODO should be from apcv
   fromName: "APCV",
   subject: "New enquiry from apcv.com.au",
 }
-
 
 const ALL_SITES = [ZEDPA_SITE, APCV_SITE];
 
@@ -43,6 +42,10 @@ export default {
       return handleCors();
     }
 
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
+    }
+
     const url = new URL(request.url);
 
     if (url.pathname !== "/submit") {
@@ -50,10 +53,9 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
+    // if origin doesn't match one of our sites, ignore
     const origin = request.headers.get('Origin');
-    console.log("Received request from origin:", origin);
     const site = ALL_SITES.find(s => origin.endsWith(s.domain));
-    console.log("Received submission from origin:", origin, "matched site:", site?.domain);
 
     if (!site) {
       return jsonError("Unknown site", 400);
@@ -69,10 +71,6 @@ export default {
 // Form submission handler
 // ---------------------------------------------------------------------------
 async function handleSubmit(request, env, site) {
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
   if (!site) {
     return jsonError("Unknown site", 400);
   }
