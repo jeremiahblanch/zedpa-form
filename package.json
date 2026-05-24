@@ -1,4 +1,10 @@
 {
   "name": "zedpa-form",
-  "version": "0.0.1"
+  "packageManager": "yarn@4.9.1",
+  "scripts": {
+    "watch-cloudflare": "wrangler tail"
+  },
+  "dependencies": {
+    "wrangler": "^4.94.0"
+  }
 }
