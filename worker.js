@@ -50,9 +50,9 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
-
     const origin = request.headers.get('Origin');
     const site = ALL_SITES.find(s => origin.endsWith(s.domain));
+    console.log("Received submission from origin:", origin, "matched site:", site?.domain);
 
     if (!site) {
       return jsonError("Unknown site", 400);
