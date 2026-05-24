@@ -44,6 +44,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const host = url.hostname.replace(/^www\./, "");
+    console.log(request);
 
     if (request.method === "OPTIONS") {
       return handleCors();
