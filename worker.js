@@ -82,22 +82,29 @@ async function handleSubmit(request, env, site) {
     return jsonError("Could not parse JSON body", 400);
   }
 
-  const name = getFieldValue(fields, "name");
-  const email = getFieldValue(fields, "email");
-  const phone = getFieldValue(fields, "phone");
-  const message = getFieldValue(fields, "message");
+  const email = safeGetFieldValue(fields, "email");
+  const name = safeGetFieldValue(fields, "name");
 
-  if (!name || !email || !message) {
-    return jsonError("Missing required fields: name, email, message", 422);
-  }
+  /*
+  TODO
+  instead of safe get, just ensure all forms have the fields of name and email with consistent naming and no punctuation.
+  
+  then, get those 2 values out, and pass the remaining fields
+
+  const { name, email, ...otherFields } = fields;
+  
+  and then pass otherFields to the owner notification so they can see all the submitted data, even if we don't know in advance what the fields will be (e.g. phone, message, etc).
+  */
+
+
   if (!isValidEmail(email)) {
     return jsonError("Invalid email address", 422);
   }
 
   try {
     await Promise.all([
-      sendOwnerNotification({ site, name, email, phone, message }, env),
-      sendUserAutoresponse({ site, name, email }, env),
+      sendOwnerNotification(site, { name, email, phone, message }, env),
+      sendUserAutoresponse(site, { name, email }, env),
     ]);
   } catch (err) {
     console.error("Postmark error:", err);
@@ -116,13 +123,13 @@ async function handleSubmit(request, env, site) {
 /**
  * Sends a notification to the site owner with the full submission details.
  */
-async function sendOwnerNotification({ site, name, email, phone, message }, env) {
+async function sendOwnerNotification(site, { name, email, phone, message }, env) {
   const body = `
 New enquiry received
 
 Name:    ${name}
 Email:   ${email}
-Phone:   ${phone || "Not provided"}
+${phone ? `Phone:   ${phone}` : ''}
 
 Message:
 ${message}
@@ -140,7 +147,7 @@ ${message}
 /**
  * Sends a plain confirmation to the person who submitted the form.
  */
-async function sendUserAutoresponse({ site, name, email }, env) {
+async function sendUserAutoresponse(site, { name, email }, env) {
   const body = `
 Hi ${name},
 
@@ -206,9 +213,12 @@ function corsHeaders(extra = {}) {
   };
 }
 
-// gets the field value even if casing of field name is different
-function getFieldValue(fields, key) {
-  const foundKey = Object.keys(fields).find(k => k.toLowerCase() === key.toLowerCase());
+// gets the field value even if casing of field name is different or it has punctuation like colons (e.g. "Email:" vs "email")
+const rxAlphaNum = /[^a-z0-9]/g;
+function safeGetFieldValue(fields, key) {
+  const makeSafe = str => str.toLowerCase().replace(rxAlphaNum, '');
+  const foundKey = Object.keys(fields).find(k => makeSafe(k) === makeSafe(key));
   const value = foundKey ? fields[foundKey] : undefined;
+
   return value?.trim();
 }
