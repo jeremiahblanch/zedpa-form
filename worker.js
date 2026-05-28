@@ -82,20 +82,9 @@ async function handleSubmit(request, env, site) {
     return jsonError("Could not parse JSON body", 400);
   }
 
-  const email = safeGetFieldValue(fields, "email");
-  const name = safeGetFieldValue(fields, "name");
-
-  /*
-  TODO
-  instead of safe get, just ensure all forms have the fields of name and email with consistent naming and no punctuation.
-  
-  then, get those 2 values out, and pass the remaining fields
-
-  const { name, email, ...otherFields } = fields;
-  
-  and then pass otherFields to the owner notification so they can see all the submitted data, even if we don't know in advance what the fields will be (e.g. phone, message, etc).
-  */
-
+  const safeFields = makeSafeFields(fields);
+  const email = safeFields.EMAIL;
+  const name = safeFields.NAME;
 
   if (!isValidEmail(email)) {
     return jsonError("Invalid email address", 422);
@@ -103,7 +92,7 @@ async function handleSubmit(request, env, site) {
 
   try {
     await Promise.all([
-      sendOwnerNotification(site, { name, email, phone, message }, env),
+      sendOwnerNotification(site, safeFields, env),
       sendUserAutoresponse(site, { name, email }, env),
     ]);
   } catch (err) {
@@ -123,17 +112,17 @@ async function handleSubmit(request, env, site) {
 /**
  * Sends a notification to the site owner with the full submission details.
  */
-async function sendOwnerNotification(site, { name, email, phone, message }, env) {
+async function sendOwnerNotification(site, fields, env) {
+  const { NAME: name, EMAIL: email, PHONE: phone, ...otherFields } = fields;
+
   const body = `
 New enquiry received
 
-Name:    ${name}
-Email:   ${email}
-${phone ? `Phone:   ${phone}` : ''}
+NAME:    ${name}
+EMAIL:   ${email}
+${phone ? `PHONE:   ${phone}` : ''}
 
-Message:
-${message}
-  `.trim();
+` + Object.entries(otherFields).map(([key, value]) => `${key}: ${value}`).join('\n').trim();
 
   return postmark({
     From: `${site.fromName} <${site.fromEmail}>`,
@@ -213,12 +202,13 @@ function corsHeaders(extra = {}) {
   };
 }
 
-// gets the field value even if casing of field name is different or it has punctuation like colons (e.g. "Email:" vs "email")
-const rxAlphaNum = /[^a-z0-9]/g;
-function safeGetFieldValue(fields, key) {
-  const makeSafe = str => str.toLowerCase().replace(rxAlphaNum, '');
-  const foundKey = Object.keys(fields).find(k => makeSafe(k) === makeSafe(key));
-  const value = foundKey ? fields[foundKey] : undefined;
-
-  return value?.trim();
+// given an object of fields, returns a new object with cleaned field names (e.g. "Email:" becomes "EMAIL") but same values
+const rxDisallowedChars = /[^a-z0-9 ]/g;
+function makeSafeFields(fields) {
+  const safeFields = {};
+  for (const key in fields) {
+    const safeKey = key.toUpperCase().replace(rxDisallowedChars, '');
+    safeFields[safeKey] = fields[key];
+  }
+  return safeFields;
 }
