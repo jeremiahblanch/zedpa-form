@@ -83,17 +83,15 @@ async function handleSubmit(request, env, site) {
   }
 
   const safeFields = makeSafeFields(fields);
-  const email = safeFields.EMAIL;
-  const name = safeFields.NAME;
 
-  if (!isValidEmail(email)) {
+  if (!isValidEmail(safeFields.email)) {
     return jsonError("Invalid email address", 422);
   }
 
   try {
     await Promise.all([
       sendOwnerNotification(site, safeFields, env),
-      sendUserAutoresponse(site, { name, email }, env),
+      sendUserAutoresponse(site, safeFields, env),
     ]);
   } catch (err) {
     console.error("Postmark error:", err);
@@ -113,7 +111,7 @@ async function handleSubmit(request, env, site) {
  * Sends a notification to the site owner with the full submission details.
  */
 async function sendOwnerNotification(site, fields, env) {
-  const { NAME: name, EMAIL: email, PHONE: phone, ...otherFields } = fields;
+  const { name, email, phone, ...otherFields } = fields;
 
   const body = `
 New enquiry received
@@ -122,7 +120,7 @@ NAME:    ${name}
 EMAIL:   ${email}
 ${phone ? `PHONE:   ${phone}` : ''}
 
-` + Object.entries(otherFields).map(([key, value]) => `${key}: ${value}`).join('\n').trim();
+` + Object.entries(otherFields).map(([key, value]) => `${key.toUpperCase()}: ${value}`).join('\n').trim();
 
   return postmark({
     From: `${site.fromName} <${site.fromEmail}>`,
@@ -202,13 +200,14 @@ function corsHeaders(extra = {}) {
   };
 }
 
-// given an object of fields, returns a new object with cleaned field names (e.g. "Email:" becomes "EMAIL") but same values
+// given an object of fields, returns a new object with cleaned field names (e.g. "Email:" becomes "email") 
+// and trimmed values
 const rxDisallowedChars = /[^a-z0-9 ]/g;
 function makeSafeFields(fields) {
   const safeFields = {};
   for (const key in fields) {
-    const safeKey = key.toUpperCase().replace(rxDisallowedChars, '');
-    safeFields[safeKey] = fields[key];
+    const safeKey = key.toLowerCase().replace(rxDisallowedChars, '');
+    safeFields[safeKey] = (fields[key] ?? '').trim();
   }
   return safeFields;
 }
